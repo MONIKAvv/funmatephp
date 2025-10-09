@@ -1,6 +1,7 @@
 <?php
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
+
 include "db_connection.php";
 
 $email = $_GET['email'] ?? null;
@@ -27,6 +28,7 @@ try {
         sound_fun_last_date
        
     FROM users WHERE email = ?");
+   
     
     $stmt->execute([$email]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -1,69 +1,118 @@
 <?php
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=utf-8");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type");
+
+error_reporting(0);
+ini_set('display_errors', 0);
+
 include "db_connection.php";
 
-$data = json_decode(file_get_contents("php://input"), true);
+// Get POST data
+$input = json_decode(file_get_contents('php://input'), true);
 
-$email = $data['email'] ?? null;
-$coins = intval($data['coins'] ?? 0);
-$subject = $data['subject'] ?? null;
-$currentIndex = intval($data['currentIndex'] ?? 0);
+$uid = $input['uid'] ?? null;
+$email = $input['email'] ?? null;
+$coins = intval($input['coins'] ?? 0);
+$subject = $input['subject'] ?? null;
+$currentIndex = intval($input['currentIndex'] ?? 0); // Make sure this is sent!
+$today = date('Y-m-d');
 
-if (!$email) {
-    echo json_encode(["success" => false, "message" => "Email required"]);
+if (!$email || !$uid || !$subject || $currentIndex === null || $coins === null) {
+    echo json_encode(["success" => false, "message" => "Missing required fields"]);
     exit;
 }
 
+
 try {
-    // Determine which column to update based on subject
-    $indexColumn = null;
-    switch($subject) {
+    // 🎯 Map subject to correct database columns
+    $indexColumn = '';
+    $dateColumn = '';
+    
+    switch (strtolower($subject)) {
         case 'alphabetfun':
             $indexColumn = 'alphabet_current_index';
+            $dateColumn = 'alphabet_fun_last_date';
             break;
         case 'bigvssmall':
             $indexColumn = 'bigvssmall_current_index';
+            $dateColumn = 'bigvssmall_fun_last_date';
             break;
         case 'mathfun':
+        case 'math':
             $indexColumn = 'math_current_index';
+            $dateColumn = 'math_fun_last_date';
             break;
         case 'soundfun':
+        case 'sound':
             $indexColumn = 'sound_current_index';
+            $dateColumn = 'sound_fun_last_date';
             break;
-
-        case 'dailycheckin':
-                $indexColumn = 'daily_checkin_current_index';
-                break;
         case 'gamefun':
             $indexColumn = 'game_fun_current_index';
-            break;    
+            $dateColumn = 'game_fun_last_date';
+            break;
+        case 'dailycheckin':
+            $indexColumn = 'daily_checkin_current_index';
+            $dateColumn = 'daily_checkin_last_date';
+            break;
+        default:
+            echo json_encode(["success" => false, "message" => "Invalid subject"]);
+            exit;
     }
 
-    if ($indexColumn) {
-        // Update coins AND current index
-        $stmt = $pdo->prepare("UPDATE users SET coins = coins + ?, $indexColumn = ? WHERE email = ?");
-        $stmt->execute([$coins, $currentIndex, $email]);
-    } else {
-        // Only update coins
-        $stmt = $pdo->prepare("UPDATE users SET coins = coins + ? WHERE email = ?");
-        $stmt->execute([$coins, $email]);
-    }
+    // ✅ Update coins, current index, AND last date
+    $sql = "UPDATE users 
+            SET coins = coins + ?,
+                $indexColumn = ?,
+                $dateColumn = ?
+            WHERE email = ?";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$coins, $currentIndex, $today, $email]);
 
-    if ($stmt->rowCount() > 0) {
-        // Fetch updated total coins
-        $stmt = $pdo->prepare("SELECT coins FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+    // ✅ Fetch updated data to return
+    $fetchStmt = $pdo->prepare("
+        SELECT 
+            coins,
+            alphabet_current_index,
+            bigvssmall_current_index,
+            math_current_index,
+            sound_current_index,
+            daily_checkin_current_index,
+            game_fun_current_index
+        FROM users 
+        WHERE email = ?
+    ");
+    $fetchStmt->execute([$email]);
+    $user = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user) {
         echo json_encode([
-            "success" => true, 
-            "message" => "User data updated successfully",
-            "totalCoins" => $result['coins']
+            "success" => true,
+            "message" => "Data saved successfully for $subject",
+            "user" => [
+                "email" => $email,
+                "coins" => intval($user['coins']),
+                "alphabet_current_index" => intval($user['alphabet_current_index']),
+                "bigvssmall_current_index" => intval($user['bigvssmall_current_index']),
+                "math_current_index" => intval($user['math_current_index']),
+                "sound_current_index" => intval($user['sound_current_index']),
+                "daily_checkin_current_index" => intval($user['daily_checkin_current_index']),
+                "game_fun_current_index" => intval($user['game_fun_current_index']),
+                "updated_subject" => $subject,
+                "updated_index" => $currentIndex
+            ]
         ]);
     } else {
-        echo json_encode(["success" => false, "message" => "No user updated (maybe not found)"]);
+        echo json_encode(["success" => false, "message" => "User not found"]);
     }
+
 } catch (PDOException $e) {
-    echo json_encode(["success" => false, "message" => "Error: " . $e->getMessage()]);
+    echo json_encode([
+        "success" => false, 
+        "message" => "Database error: " . $e->getMessage()
+    ]);
 }
 ?>
