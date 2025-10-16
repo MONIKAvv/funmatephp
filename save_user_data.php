@@ -29,7 +29,7 @@ $uid = $data['uid'] ?? '';
 $name = $data['name'] ?? '';
 $email = $data['email'] ?? '';
 $device_id = $data['device_id'] ?? '';
-$idToken = $data['idToken'] ?? '';
+// $idToken = $data['idToken'] ?? '';
 $coins = intval($data['coins'] ?? 0);
 $currentIndex = intval($data['currentIndex'] ?? 0);
 $subject = strtolower($data['subject'] ?? '');
@@ -113,8 +113,8 @@ try {
 
     } else {
         // New user - INSERT
-        $insertFields = ["uid","name","email","device_id","idToken","coins"];
-        $insertValues = [$uid, $name, $email, $device_id, $idToken, $coins];
+        $insertFields = ["uid","name","email","device_id","coins"];
+        $insertValues = [$uid, $name, $email, $device_id, $coins];
 
         if ($dailyLimitColumn && $dateColumn) {
             $insertFields[] = $dailyLimitColumn;
@@ -134,9 +134,9 @@ try {
     }
 
     // Generate token
-    $token = bin2hex(random_bytes(16));
-    $tokenStmt = $pdo->prepare("UPDATE users SET token = ? WHERE id = ?");
-    $tokenStmt->execute([$token, $userId]);
+    // $token = bin2hex(random_bytes(16));
+    // $tokenStmt = $pdo->prepare("UPDATE users SET token = ? WHERE id = ?");
+    // $tokenStmt->execute([$token, $userId]);
 
     // Fetch full user data
     $allDataStmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -145,7 +145,6 @@ try {
 
     echo json_encode([
         "success" => true,
-        "token" => $token,
         "message" => "Data saved successfully for $subject",
         "user" => [
             "id" => $userId,
