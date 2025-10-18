@@ -2,82 +2,135 @@
 header("Content-Type: application/json; charset=utf-8");
 include "db_connection.php";
 
-$data = json_decode(file_get_contents("php://input"), true);
-if (!$data) {
-    echo json_encode(["success" => false, "message" => "No data received"]);
-    exit;
-}
+try {
+    $data = json_decode(file_get_contents("php://input"), true);
 
-$email = $data["email"] ?? "";
-$method_name = $data["method"] ?? "";
-$account_holder_name = $data["accountHolder"] ?? "";
-$holder_name = $data["holderName"] ?? "";
-$upi_id = $data["upiId"] ?? "";
-$bank_name = $data["bankName"] ?? "";
-$account_number = $data["accountNo"] ?? "";
-$ifsc_code = $data["ifscCode"] ?? "";
-$phone_number = $data["phoneNo"] ?? "";
+    // Log the incoming request for debugging
+    error_log("Withdrawal Request: " . json_encode($data));
 
-if (!$email) {
-    echo json_encode(["success" => false, "message" => "Email is required"]);
-    exit;
-}
+    $email = $data["email"] ?? "";
+    $method_name = $data["method"] ?? "";
+    $account_holder_name = $data["accountHolder"] ?? "";
+    $upi_id = $data["upiId"] ?? "";
+    $bank_name = $data["bankName"] ?? "";
+    $account_number = $data["accountNo"] ?? "";
+    $ifsc_code = $data["ifscCode"] ?? "";
+    $phone_number = $data["phoneNo"] ?? "";
 
-// Step 1: Get user_id and total_coins from users table
-$stmt = $pdo->prepare("SELECT id, coins FROM users WHERE email = ?");
-$stmt->execute([$email]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$email) {
+        echo json_encode([
+            "success" => false, 
+            "message" => "Email is required"
+        ]);
+        exit;
+    }
 
-if (!$user) {
-    echo json_encode(["success" => false, "message" => "User not found"]);
-    exit;
-}
+    if (!$method_name) {
+        echo json_encode([
+            "success" => false, 
+            "message" => "Payment method is required"
+        ]);
+        exit;
+    }
 
-$user_id = $user["id"];
-$total_coins = $user["coins"];
+    // Step 1: Get user info
+    $stmt = $pdo->prepare("SELECT id, coins FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Step 2: Insert into withdraw_methods
-$stmt = $pdo->prepare("
-    INSERT INTO withdraw_methods 
-    (user_id, method_name, account_holder_name, upi_id, bank_name, account_number, ifsc_code, phone_number, email)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-");
+    if (!$user) {
+        echo json_encode([
+            "success" => false, 
+            "message" => "User not found"
+        ]);
+        exit;
+    }
 
-$success = $stmt->execute([
-    $user_id, $method_name, $account_holder_name, $upi_id, $bank_name, 
-    $account_number, $ifsc_code, $phone_number, $email
-]);
+    $user_id = $user["id"];
+    $total_coins = (int)$user["coins"];
 
-if (!$success) {
-    echo json_encode(["success" => false, "message" => "Failed to save withdraw method"]);
-    exit;
-}
+    // Step 2: Check if user already has a pending request
+    $pendingCheck = $pdo->prepare("SELECT id FROM withdraw WHERE user_id = ? AND status = 'pending'");
+    $pendingCheck->execute([$user_id]);
+    $pending = $pendingCheck->fetch(PDO::FETCH_ASSOC);
 
-// Get the last inserted withdraw_method_id
-$withdraw_method_id = $pdo->lastInsertId();
+    if ($pending) {
+        echo json_encode([
+            "success" => false, 
+            "message" => "You already have a pending withdrawal request. Please wait until it's processed."
+        ]);
+        exit;
+    }
 
-// Step 3: Insert into withdraw table
-$withdraw_coin = 100; // for now, you can set a fixed or dynamic value
-$left_coin = $total_coins - $withdraw_coin;
+    // Step 3: Check eligibility
+    $withdraw_coin = 10; // minimum coins required
+    if ($total_coins < $withdraw_coin) {
+        echo json_encode([
+            "success" => false, 
+            "message" => "Not enough coins to withdraw. You need at least 10 coins."
+        ]);
+        exit;
+    }
 
-$stmt = $pdo->prepare("
-    INSERT INTO withdraw (user_id, total_coins, withdrawal_coin, left_coin, status, withdraw_method_id)
-    VALUES (?, ?, ?, ?, 'pending', ?)
-");
+    // Use transaction for data consistency
+    $pdo->beginTransaction();
 
-$success2 = $stmt->execute([
-    $user_id, $total_coins, $withdraw_coin, $left_coin, $withdraw_method_id
-]);
+    // Step 4: Save withdraw method
+    $stmt = $pdo->prepare("
+        INSERT INTO withdraw_methods 
+        (user_id, method_name, account_holder_name, upi_id, bank_name, account_number, ifsc_code, phone_number, email)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $user_id, 
+        $method_name, 
+        $account_holder_name, 
+        $upi_id, 
+        $bank_name, 
+        $account_number, 
+        $ifsc_code, 
+        $phone_number, 
+        $email
+    ]);
+    $withdraw_method_id = $pdo->lastInsertId();
 
-if ($success2) {
+    // Step 5: Calculate left coins (but don't apply yet)
+    $left_coin = $total_coins - $withdraw_coin;
+
+    // Step 6: Insert withdraw record with status = 'pending'
+    $stmt = $pdo->prepare("
+        INSERT INTO withdraw (user_id, total_coins, withdrawal_coin, left_coin, status, withdraw_method_id)
+        VALUES (?, ?, ?, ?, 'pending', ?)
+    ");
+    $stmt->execute([$user_id, $total_coins, $withdraw_coin, $left_coin, $withdraw_method_id]);
+
+    // Commit transaction
+    $pdo->commit();
+
+    // DO NOT update user's coins - only when admin approves
     echo json_encode([
         "success" => true,
-        "message" => "Withdrawal details and request saved successfully"
+        "message" => "Withdrawal request submitted successfully. Waiting for approval.",
+        "current_coins" => $total_coins
     ]);
-} else {
+
+} catch (PDOException $e) {
+    // Rollback on error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    
+    error_log("Database Error: " . $e->getMessage());
     echo json_encode([
         "success" => false,
-        "message" => "Failed to save withdrawal request"
+        "message" => "Database error occurred. Please try again."
+    ]);
+    
+} catch (Exception $e) {
+    error_log("General Error: " . $e->getMessage());
+    echo json_encode([
+        "success" => false,
+        "message" => "An error occurred: " . $e->getMessage()
     ]);
 }
 ?>
