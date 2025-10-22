@@ -27,3 +27,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 ?>
+
+
+
+
+
+<!-- Note: -> we use query if we nothing have to pass anything
+ and use prepare if we want to fetch something from particular user of something -->

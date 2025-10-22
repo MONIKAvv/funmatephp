@@ -35,6 +35,7 @@ try {
 
     if ($result) {
         // 🔥 DAILY RESET LOGIC - Check if it's a new day for each subject
+        // this is ternary operatior 
         $alphabetIndex = ($result['alphabet_fun_last_date'] == $today) 
             ? intval($result['alphabet_current_index']) : 0;
             
