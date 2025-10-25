@@ -9,6 +9,9 @@ try {
     error_log("Withdrawal Request: " . json_encode($data));
 
     $email = $data["email"] ?? "";
+
+// subcategory as well , this name is same as the one sending from app itself
+
     $method_name = $data["method"] ?? "";
     $account_holder_name = $data["accountHolder"] ?? "";
     $upi_id = $data["upiId"] ?? "";
@@ -16,6 +19,8 @@ try {
     $account_number = $data["accountNo"] ?? "";
     $ifsc_code = $data["ifscCode"] ?? "";
     $phone_number = $data["phoneNo"] ?? "";
+    $sub_category = $data["subCategory"] ?? "";
+    $withdraw_coin = $data["Withdraw_coin"] ?? "";
 
     if (!$email) {
         echo json_encode([
@@ -63,7 +68,7 @@ try {
     }
 
     // Step 3: Check eligibility
-    $withdraw_coin = 10; // minimum coins required
+    // $withdraw_coin = 10; // minimum coins required, it will come from app itself
     if ($total_coins < $withdraw_coin) {
         echo json_encode([
             "success" => false, 
@@ -75,11 +80,11 @@ try {
     // Use transaction for data consistency
     $pdo->beginTransaction();
 
-    // Step 4: Save withdraw method
+    // Step 4: Save withdraw method, insert subcategory as well
     $stmt = $pdo->prepare("
         INSERT INTO withdraw_methods 
-        (user_id, method_name, account_holder_name, upi_id, bank_name, account_number, ifsc_code, phone_number, email)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, method_name, account_holder_name, upi_id, bank_name, account_number, ifsc_code, phone_number, email, sub_category)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $user_id, 
@@ -90,19 +95,20 @@ try {
         $account_number, 
         $ifsc_code, 
         $phone_number, 
-        $email
+        $email, 
+        $sub_category
     ]);
     $withdraw_method_id = $pdo->lastInsertId();
 
     // Step 5: Calculate left coins (but don't apply yet)
     $left_coin = $total_coins - $withdraw_coin;
 
-    // Step 6: Insert withdraw record with status = 'pending'
+    // Step 6: Insert withdraw record with status = 'pending', here need to inset method_name and subcategory
     $stmt = $pdo->prepare("
-        INSERT INTO withdraw (user_id, total_coins, withdrawal_coin, left_coin, status, withdraw_method_id)
-        VALUES (?, ?, ?, ?, 'pending', ?)
+        INSERT INTO withdraw (user_id, total_coins, withdrawal_coin, left_coin, status, withdraw_method_id, method_name, sub_category)
+        VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)
     ");
-    $stmt->execute([$user_id, $total_coins, $withdraw_coin, $left_coin, $withdraw_method_id]);
+    $stmt->execute([$user_id, $total_coins, $withdraw_coin, $left_coin, $withdraw_method_id, $method_name, $sub_category]);
 
     // Commit transaction
     $pdo->commit();
