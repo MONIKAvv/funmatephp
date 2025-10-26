@@ -20,7 +20,7 @@ try {
     $ifsc_code = $data["ifscCode"] ?? "";
     $phone_number = $data["phoneNo"] ?? "";
     $sub_category = $data["subCategory"] ?? "";
-    $withdraw_coin = $data["Withdraw_coin"] ?? "";
+    $withdraw_coin = $data["withdrawal_coin"] ?? "";
 
     if (!$email) {
         echo json_encode([
