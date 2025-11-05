@@ -15,6 +15,9 @@ if (!$withdraw_id || !in_array($new_status, ['successful', 'rejected'])) {
 
 try {
     $pdo->beginTransaction();
+    // update total coin
+    // $stmt = $pdo->prepare("SELECT id, coins FROM users WHERE eamil = ?");
+    // $stmt->execute([$ema])
 
     // Get withdrawal details
     $stmt = $pdo->prepare("SELECT user_id, withdrawal_coin, left_coin, status FROM withdraw WHERE id = ?");

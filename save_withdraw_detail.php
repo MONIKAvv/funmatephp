@@ -101,7 +101,8 @@ try {
     $withdraw_method_id = $pdo->lastInsertId();
 
     // Step 5: Calculate left coins (but don't apply yet)
-    $left_coin = $total_coins - $withdraw_coin;
+    // $left_coin = $total_coins-$withdraw_coin;
+    // i guess we don't need this leftcoin column , i have used trigger at the sql side
 
     // Step 6: Insert withdraw record with status = 'pending', here need to inset method_name and subcategory
     $stmt = $pdo->prepare("

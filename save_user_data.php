@@ -98,6 +98,11 @@ try {
         $updateFields = "uid = ?, name = ?, email = ?, device_id = ?, coins = ?";
         $params = [$uid, $name, $email, $device_id, $newTotalCoins];
 
+// update withdrawtable totalcoins as well here
+$stmt = $pdo->prepare("UPDATE withdraw SET total_coins = ? WHERE user_id = ?");
+$stmt->execute([$newTotalCoins , $userId]);
+
+
         if ($dailyLimitColumn && $dateColumn) {
             $updateFields .= ", $dailyLimitColumn = ?, $dateColumn = ?";
             $params[] = $newSubjectLimit;
@@ -112,6 +117,22 @@ try {
         error_log("✅ Updated user $userId: coins=$newTotalCoins, {$subject}_index=$newSubjectLimit");
 
     } else {
+
+
+// check if this device_id already used by another account or not 
+        $deviceCheck = $pdo->prepare("SELECT email FROM users WHERE device_id = ?");
+        $deviceCheck->execute([$device_id]);
+        $exitingDevice = $deviceCheck->fetch(PDO::FETCH_ASSOC);
+
+        if($exitingDevice){
+            echo json_encode([
+                "success" => false,
+                "message" => "This device is already linked to another account (".$exitingDevice['email']."). Only one account per device is allowed."
+            ]);
+            exit;
+        }
+
+
         // New user - INSERT
         $insertFields = ["uid","name","email","device_id","coins"];
         $insertValues = [$uid, $name, $email, $device_id, $coins];
