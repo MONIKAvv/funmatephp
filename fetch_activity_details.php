@@ -7,6 +7,8 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 include "db_connection.php";
 
+// marks and daily limits of each subjects 
+
 try {
     $stmt = $pdo->query("SELECT * FROM ActivityDetails");
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

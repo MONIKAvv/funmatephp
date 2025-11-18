@@ -44,10 +44,9 @@ if (empty($uid) || empty($email)) {
 $subjectColumns = [
     'alphabetfun' => 'alphabet_current_index',
     'bigvssmall' => 'bigvssmall_current_index',
- 
     'mathfun' => 'math_current_index',
     'soundfun' => 'sound_current_index',
-       'dailycheckin' => 'daily_checkin_current_index',
+    'dailycheckin' => 'daily_checkin_current_index',
     'gamefun' => 'game_fun_current_index',
 ];
 
