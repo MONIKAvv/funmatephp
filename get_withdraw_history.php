@@ -13,17 +13,22 @@ ini_set('display_errors', 1);
 
 try {
     include "db_connection.php";
-   $data = json_decode(file_get_contents("php://input"), true);
+
+   // --- THIS IS THE ONLY CHANGE YOU NEED ---
+   // Look for the email in the URL query parameters ($_GET)
+ $data = json_decode(file_get_contents("php://input"), true);
 $email = $data["email"] ?? "";
+
 
     if (!$email) {
         echo json_encode([
             "success" => false,
-            "message" => "Email is required"
+            "message" => "Email parameter is required in the URL."
         ]);
         exit;
     }
 
+    // First, get the user's ID from the users table. This is good practice.
     $stmtUser = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmtUser->execute([$email]);
     $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
@@ -37,6 +42,7 @@ $email = $data["email"] ?? "";
     }
     $user_id = $user["id"];
 
+    // Now, fetch the history for that specific user ID.
     $query = "
     SELECT
         w.id,
@@ -58,7 +64,7 @@ $email = $data["email"] ?? "";
     $stmtHistory->execute([$user_id]);
     $history = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
 
-    // ✅ Return the clean data
+    // Return the data found
     echo json_encode([
         "success" => true,
         "data" => $history
@@ -71,3 +77,4 @@ $email = $data["email"] ?? "";
         "message" => "An error occurred: " . $e->getMessage()
     ]);
 }
+?>
