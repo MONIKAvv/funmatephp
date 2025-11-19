@@ -43,26 +43,25 @@ $email = $data["email"] ?? "";
     $user_id = $user["id"];
 
     // Now, fetch the history for that specific user ID.
-    $query = "
-    SELECT
+$stmt = $pdo->prepare(
+    "SELECT
         w.id,
         w.user_id,
         w.email,
-        w.code,
         w.withdrawal_coin,
         w.status,
-        w.requested_at,
         w.withdraw_method_id,
-        m.method_name
+        w.requested_at,
+        w.method_name,  -- <-- Add this line
+        gc.code         -- <-- This is from the JOIN in Problem 3
     FROM withdraw AS w
-    LEFT JOIN withdraw_methods AS m ON w.withdraw_method_id = m.id
-    WHERE w.user_id = ?
-    ORDER BY w.requested_at DESC
-    ";
+    LEFT JOIN gift_codes AS gc ON w.user_id = (SELECT id FROM users WHERE email = w.email) AND w.requested_at = gc.assigned_at
+    WHERE w.email = ?
+    ORDER BY w.id DESC"
+);
 
-    $stmtHistory = $pdo->prepare($query);
-    $stmtHistory->execute([$user_id]);
-    $history = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
+$stmt->execute([$email]);
+$history = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Return the data found
     echo json_encode([
