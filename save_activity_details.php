@@ -16,7 +16,7 @@ $uid = $input['uid'] ?? null;
 $email = $input['email'] ?? null;
 $coins = intval($input['coins'] ?? 0);
 $subject = $input['subject'] ?? null;
-$currentIndex = intval($input['currentIndex'] ?? 0); // Make sure this is sent!
+$currentIndex = intval($input['currentIndex'] ?? 1); // Make sure this is sent!
 $today = date('Y-m-d');
 
 if (!$email || !$uid || !$subject || $currentIndex === null || $coins === null) {
@@ -50,7 +50,7 @@ try {
             $dateColumn = 'sound_fun_last_date';
             break;
         case 'gamefun':
-            $indexColumn = 'game_fun_current_index';
+            $indexColumn = 'game_current_index';
             $dateColumn = 'game_fun_last_date';
             break;
         case 'dailycheckin':
@@ -81,7 +81,7 @@ try {
             math_current_index,
             sound_current_index,
             daily_checkin_current_index,
-            game_fun_current_index
+            game_current_index
         FROM users 
         WHERE email = ?
     ");
@@ -100,7 +100,7 @@ try {
                 "math_current_index" => intval($user['math_current_index']),
                 "sound_current_index" => intval($user['sound_current_index']),
                 "daily_checkin_current_index" => intval($user['daily_checkin_current_index']),
-                "game_fun_current_index" => intval($user['game_fun_current_index']),
+                "game_current_index" => intval($user['game_current_index']),
                 "updated_subject" => $subject,
                 "updated_index" => $currentIndex
             ]

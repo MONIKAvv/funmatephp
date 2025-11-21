@@ -18,7 +18,7 @@ try {
         math_current_index,
         sound_current_index,
         daily_checkin_current_index,
-        game_fun_current_index,
+        game_current_index,
         coins,
          alphabet_fun_last_date,
         bigvssmall_fun_last_date,
@@ -52,7 +52,7 @@ try {
             ? intval($result['daily_checkin_current_index']) : 0;
             
         $gamefunIndex = ($result['game_fun_last_date'] == $today) 
-            ? intval($result['game_fun_current_index']) : 0;
+            ? intval($result['game_current_index']) : 0;
 
         echo json_encode([
             "success" => true,
@@ -62,7 +62,7 @@ try {
         "math_current_index" => $mathIndex,
         "sound_current_index" => $soundIndex,
         "daily_checkin_current_index" => $checkinIndex,
-        "game_fun_current_index" => $gamefunIndex,
+        "game_current_index" => $gamefunIndex,
         "coins" => intval($result['coins']),
         "alphabet_fun_last_date" => $result['alphabet_fun_last_date'],
          "bigvssmall_fun_last_date" => $result['bigvssmall_fun_last_date'],

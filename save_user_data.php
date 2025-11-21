@@ -47,7 +47,7 @@ $subjectColumns = [
     'mathfun' => 'math_current_index',
     'soundfun' => 'sound_current_index',
     'dailycheckin' => 'daily_checkin_current_index',
-    'gamefun' => 'game_fun_current_index',
+    'gamefun' => 'game_current_index',
 ];
 
 $subjectDateColumns = [
@@ -98,8 +98,9 @@ try {
         $params = [$uid, $name, $email, $device_id, $newTotalCoins];
 
 // update withdrawtable totalcoins as well here
-$stmt = $pdo->prepare("UPDATE withdraw SET total_coins = ? WHERE user_id = ?");
-$stmt->execute([$newTotalCoins , $userId]);
+// error coming from this line
+// $stmt = $pdo->prepare("UPDATE withdraw SET total_coins = ? WHERE user_id = ?");
+// $stmt->execute([$newTotalCoins , $userId]);
 
 
         if ($dailyLimitColumn && $dateColumn) {
